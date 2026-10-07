@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "docurag-backend"
+version = "0.1.0"
+description = "Multimodal RAG backend for DocuRAG"
+requires-python = ">=3.11,<3.12"
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

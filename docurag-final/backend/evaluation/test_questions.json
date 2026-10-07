@@ -1,0 +1,7 @@
+[
+ {"question":"What is the main topic of the document?","expected_docs":[]},
+ {"question":"Find the values shown in the chart.","expected_docs":[]},
+ {"question":"What does the table say?","expected_docs":[]},
+ {"question":"Summarize the scanned page.","expected_docs":[]},
+ {"question":"What is the answer to an unrelated question?","expected_docs":[]}
+]
