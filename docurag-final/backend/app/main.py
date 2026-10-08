@@ -1,4 +1,6 @@
 """DocuRAG FastAPI application."""
+from dotenv import load_dotenv
+load_dotenv("../.env")
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,6 +24,9 @@ def prep():
 async def lifespan(app:FastAPI)->AsyncIterator[None]:
  s=get_settings(); configure_logging(s); prep(); init_db(); logger.info("DocuRAG started"); yield; logger.info("DocuRAG stopped")
 s=get_settings(); app=FastAPI(title=s.app_name,version=__version__,docs_url="/docs",redoc_url="/redoc",openapi_url="/openapi.json",lifespan=lifespan)
+import logfire
+logfire.configure(metrics=False)
+
 app.add_middleware(CORSMiddleware,allow_origins=s.cors_origins,allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 @app.middleware("http")
 async def timing(request:Request,call_next):

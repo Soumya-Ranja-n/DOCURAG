@@ -13,6 +13,9 @@ from app.indexing.bm25_index import BM25Index
 from app.config import get_settings
 class IngestionPipeline:
     def __init__(self): self.settings=get_settings()
+    
+    import logfire
+    @logfire.instrument("IngestionPipeline.run")
     def run(self,doc_id: str):
         db:Session=SessionLocal(); doc=db.get(Document,doc_id)
         if not doc: db.close(); return

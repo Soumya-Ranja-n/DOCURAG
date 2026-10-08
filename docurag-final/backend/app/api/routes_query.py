@@ -9,6 +9,8 @@ from app.generation.confidence import confidence,label
 from app.utils.timer import StageTimer
 from app.deps import verify_api_key, check_rate_limit
 router=APIRouter(prefix="/api/query",tags=["query"])
+import logfire
+@logfire.instrument("run_query")
 def run_query(req):
     timer=StageTimer()
     with timer.stage("rewrite"):
@@ -22,6 +24,7 @@ def run_query(req):
     timer.timings["total"]=round(sum(timer.timings.values()),2); nf=answer.strip()=="Not found in the documents."
     return QueryResponse(answer=answer,citations=cites,confidence=conf,confidence_label=label(conf),timings_ms=timer.timings,not_found=nf)
 @router.post("",response_model=QueryResponse)
+@logfire.instrument("API.query")
 def query(req:QueryRequest, request: Request, _: bool = Depends(verify_api_key)):
     check_rate_limit(request.client.host if request.client else "unknown"); return run_query(req)
 @router.post("/stream")
