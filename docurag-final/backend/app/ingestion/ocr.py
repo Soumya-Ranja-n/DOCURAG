@@ -3,6 +3,8 @@ from PIL import Image
 from app.config import get_settings
 class OCRService:
     def __init__(self): self.engine=get_settings().ocr_engine; self._paddle=None
+    import logfire
+    @logfire.instrument("OCRService.text")
     def text(self, image: Image.Image) -> str:
         if self.engine == "pytesseract":
             import pytesseract; return pytesseract.image_to_string(image)

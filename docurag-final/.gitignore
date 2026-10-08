@@ -24,3 +24,20 @@ frontend/.vite/
 .vscode/
 .DS_Store
 *.log
+
+# Ignore images and PDFs
+*.png
+*.pdf
+
+# Ignore agents directory
+.agents/
+
+# Ignore cache and more images
+cache.json
+*.jpeg
+*.jpg
+
+# Ignore test data and databases
+*.db
+*.sqlite3
+*.sqlite

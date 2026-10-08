@@ -7,7 +7,10 @@ router=APIRouter(prefix="/api",tags=["system"])
 def health():
     s=get_settings(); services={"database":"ok"};
     try:
-        httpx.get(s.qdrant_url+"/healthz",timeout=2).raise_for_status(); services["qdrant"]="ok"
+        if s.qdrant_url.startswith("http"):
+            httpx.get(s.qdrant_url+"/healthz",timeout=2).raise_for_status(); services["qdrant"]="ok"
+        else:
+            services["qdrant"]="ok" # local qdrant
     except Exception as e: services["qdrant"]=f"unavailable: {e.__class__.__name__}"
     status="healthy" if services["qdrant"]=="ok" else "degraded"; return {"status":status,"service":s.app_name,"services":services,"dependencies":services}
 @router.get("/metrics")

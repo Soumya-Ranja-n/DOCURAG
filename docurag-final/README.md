@@ -1,76 +1,112 @@
-# DocuRAG — AI-Powered Document & Image Search & Analysis
+# DocuRAG: Multimodal Retrieval-Augmented Generation
 
-Production-oriented multimodal RAG for PDFs and images. It combines native PDF text, OCR, tables, extracted figures, BGE text embeddings, CLIP image embeddings, BM25, Qdrant, cross-encoder reranking, and Claude/Ollama grounded generation.
+DocuRAG is an advanced Multimodal Retrieval-Augmented Generation (RAG) application that allows you to upload, index, and intelligently query your PDF documents and images. 
 
-## Architecture
-```mermaid
-flowchart LR
- U[React + Vite UI] --> A[FastAPI]
- A --> I[Ingestion Pipeline]
- I --> P[PyMuPDF/pdfplumber/OCR]
- I --> E[BGE + CLIP]
- E --> Q[(Qdrant)]
- E --> B[(Persistent BM25)]
- A --> R[Hybrid RRF + Reranker]
- R --> G[Claude Vision / Ollama]
- A --> D[(SQLite Metadata)]
-```
+By leveraging **NVIDIA NIM** (NVIDIA Inference Microservices) APIs, **Qdrant** for vector storage, and **Pydantic Logfire** for comprehensive observability, DocuRAG provides highly accurate, grounded answers to complex questions over your data.
 
-## Quick start
+---
+
+## 🌟 Key Features
+
+* **Multimodal Ingestion**: Upload PDFs and images. The ingestion pipeline extracts text, crops figures/tables, and uses vision models to caption complex visual data.
+* **Hybrid Retrieval Strategy**: Combines dense vector search (Qdrant) with sparse keyword search (BM25), merged using Reciprocal Rank Fusion (RRF) for unparalleled retrieval accuracy.
+* **Advanced Reranking**: Uses NVIDIA NIM cross-encoder reranking to prioritize the most relevant document chunks before generation.
+* **Fully Grounded Generation**: Instructs the LLM to strictly base answers on retrieved context.
+* **Complete Observability**: Integrated with Pydantic Logfire, allowing real-time tracing of LLM latency, chunk ingestion, and retrieval pipeline performance.
+
+---
+
+## 🏗️ System Architecture
+
+1. **Frontend (React/Vite/Tailwind)**: A responsive chat UI where users can upload documents, ask queries, and view the precise source snippets (text or cropped images) cited by the model.
+2. **Backend (FastAPI)**: Orchestrates the RAG pipeline asynchronously.
+3. **Database (SQLite)**: Stores document metadata, chunk text, and ingestion status.
+4. **Vector Database (Qdrant)**: Runs locally via Docker to persist highly-dimensional text and image embeddings.
+5. **NVIDIA NIM Models**:
+   - *Text Embedding*: `nvidia/nemotron-3-embed-1b`
+   - *Image Embedding*: `nvidia/llama-nemotron-embed-vl-1b-v2`
+   - *Reranker*: `nvidia/llama-nemotron-rerank-1b-v2`
+   - *Generator LLM*: `nvidia/nemotron-3-ultra-550b-a55b`
+   - *Vision LLM*: `meta/llama-3.2-90b-vision-instruct`
+
+---
+
+## 🚀 Setup Guide
+
+### 1. Prerequisites
+- Python 3.10+
+- Node.js (for the frontend)
+- Docker Desktop (for running the local Qdrant database)
+- An **NVIDIA API Key** (to access NIM models)
+- A **Pydantic Logfire Token** (for observability)
+
+### 2. Environment Variables
+Copy `.env.example` to `.env` in the root directory:
 ```bash
 cp .env.example .env
-# Set LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY, or run Ollama locally and set OLLAMA_MODEL.
-docker compose up --build
 ```
-Open `http://localhost:3000`; API docs are at `http://localhost:8000/docs`.
+Populate `.env` with your actual tokens and paths:
+```env
+# NVIDIA NIM (Required)
+NVIDIA_API_KEY=nvapi-...
 
-## API
+# Pydantic Logfire (Required for observability)
+LOGFIRE_TOKEN=pylf_...
+
+# Qdrant Database
+QDRANT_URL=http://localhost:6333
+
+# Models Configuration
+TEXT_EMBEDDING_MODEL=nvidia/nemotron-3-embed-1b
+IMAGE_EMBEDDING_MODEL=nvidia/llama-nemotron-embed-vl-1b-v2
+RERANKER_MODEL=nvidia/llama-nemotron-rerank-1b-v2
+NVIDIA_MODEL=nvidia/nemotron-3-ultra-550b-a55b
+NVIDIA_VISION_MODEL=meta/llama-3.2-90b-vision-instruct
+```
+
+### 3. Start Qdrant Vector Database
+Use Docker Compose to spin up the local Qdrant database:
 ```bash
-curl -F file=@sample.pdf http://localhost:8000/api/documents/upload
-curl http://localhost:8000/api/documents
-curl -X POST http://localhost:8000/api/query -H 'Content-Type: application/json' -d '{"question":"What is the main finding?","top_k":5}'
-curl -N -X POST http://localhost:8000/api/query/stream -H 'Content-Type: application/json' -d '{"question":"Show the chart trend"}'
+docker-compose up -d
 ```
+*Note: This will expose Qdrant on port 6333 and create a local persistent volume for your vectors.*
 
-## Features
-- PDF/PNG/JPG upload with configurable 50 MB default limit.
-- Native text, scanned-page OCR, standalone-image routing.
-- Tables converted to Markdown and embedded figures extracted with hash-based VLM caption caching.
-- Page-aware chunks with overlap and metadata.
-- Qdrant dense retrieval + persistent BM25 + CLIP image retrieval, fused by RRF k=60.
-- Optional BGE cross-encoder reranking.
-- Claude vision or Ollama provider selected by environment variables; no API keys are hardcoded.
-- Grounded answers with `[document, p.X]` citations and exact out-of-scope fallback.
-- Confidence score from reranker strength, source agreement and LLM self-check.
-- Background ingestion progress, health, feedback and latency metrics.
-- Responsive dark-mode React interface with document filters, citations and source viewer.
-
-## CPU-only mode
-Set `DEVICE=cpu`, disable reranking/query rewriting if memory is constrained, and use a compact Ollama model. Model files are retained in the Docker `docurag_model_cache` volume.
-
-## Deployment
-### Render / Railway
-Deploy the backend as a Docker service, expose port 8000, attach persistent storage for `/app/data` and `/models`, and use an external Qdrant service. Deploy the frontend separately and set `VITE_API_BASE_URL`.
-
-### AWS EC2
-Install Docker, clone the repository, create `.env`, run `docker compose up -d --build`, and put Nginx/ALB in front of ports 3000/8000 with TLS. Back up the `docurag_qdrant_data` volume and `/app/data`.
-
-## Development
+### 4. Setup Backend (FastAPI)
+Navigate to the root directory and create a virtual environment:
 ```bash
-make test
-make lint
-make eval
-make up
-make down
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
 ```
-CI runs Python compilation/tests and frontend TypeScript validation.
+Install backend dependencies:
+```bash
+pip install -r backend/requirements.txt
+```
+Start the FastAPI server:
+```bash
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+*The backend will automatically create the SQLite database (`docurag.db`) and synchronize the necessary collections in Qdrant.*
 
-## Troubleshooting
-- **Qdrant unavailable:** check `docker compose ps` and port 6333.
-- **OCR errors:** switch `OCR_ENGINE=pytesseract`; Tesseract is installed in the backend image.
-- **No answer:** ensure ingestion reaches `done`, then query with a document filter.
-- **Ollama unavailable:** start Ollama on the host and ensure the configured model is pulled; or use Anthropic.
-- **Slow first request:** embedding/reranker/CLIP models are downloaded and loaded lazily into the model volume.
+### 5. Setup Frontend (React)
+Open a new terminal window, navigate to the frontend directory, and install dependencies:
+```bash
+cd frontend
+npm install
+```
+Start the development server:
+```bash
+npm run dev
+```
+The application UI will now be accessible at `http://localhost:5173`.
 
-## Project layout
-`backend/app/` contains API, ingestion, indexing, retrieval, generation and persistence layers; `frontend/` contains the React UI; `data/` is the persistent local data mount; `.github/workflows/ci.yml` contains CI.
+---
+
+## 🧠 How the RAG Pipeline Works
+
+1. **Ingestion (`app/ingestion/`)**: When a PDF is dropped into the UI, PyMuPDF parses the document. It slices text into boundary-aware chunks and crops detected figures. The `meta/llama-3.2-90b-vision-instruct` model captions the figures.
+2. **Embedding (`app/indexing/`)**: Text chunks and figure captions are embedded via `nemotron-3-embed-1b`. Standalone images are embedded multimodally via `llama-nemotron-embed-vl-1b-v2`. Vectors are stored in Qdrant.
+3. **Retrieval (`app/retrieval/`)**: Upon querying, the user's prompt is rewritten to optimize vector search. `HybridRetriever` runs a dense vector search in Qdrant and a sparse keyword search using BM25. The results are merged.
+4. **Reranking**: The merged chunks are submitted to the `llama-nemotron-rerank-1b-v2` cross-encoder API, which precisely scores and sorts the chunks by relevance.
+5. **Generation (`app/generation/`)**: The top chunks are structured into an augmented prompt and fed to `nemotron-3-ultra-550b-a55b` to generate a final answer, guaranteeing citations map strictly to the context. 
+6. **Observability**: Every single function block above is wrapped in `@logfire.instrument`, allowing developers to view exact latency, exceptions, and token usage in the Pydantic Logfire dashboard.

@@ -6,6 +6,8 @@ from app.ingestion.router import classify_pdf
 from app.ingestion.ocr import OCRService
 from app.ingestion.table_extractor import tables_for_page
 
+import logfire
+@logfire.instrument("parse_pdf")
 def parse_pdf(path: str, image_dir: str) -> tuple[list[dict],int]:
     doc=fitz.open(path); routes=classify_pdf(doc); ocr=OCRService(); records=[]
     Path(image_dir).mkdir(parents=True,exist_ok=True)
@@ -26,5 +28,6 @@ def parse_pdf(path: str, image_dir: str) -> tuple[list[dict],int]:
             except Exception: continue
     doc.close(); return records,len(routes)
 
+@logfire.instrument("parse_image")
 def parse_image(path: str, image_dir: str)->tuple[list[dict],int]:
     p=Path(path); target=Path(image_dir)/p.name; target.write_bytes(p.read_bytes()); text=OCRService().text(Image.open(target)); return [{"page":1,"type":"ocr","text":text,"image_path":str(target)}],1

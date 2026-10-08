@@ -1,11 +1,36 @@
-"""Optional BGE cross-encoder reranking."""
-from functools import lru_cache
+"""Optional NIM cross-encoder reranking."""
+import requests
 from app.config import get_settings
-@lru_cache(maxsize=1)
-def get_reranker():
-    from sentence_transformers import CrossEncoder
-    return CrossEncoder(get_settings().reranker_model,device=get_settings().device if get_settings().device!="auto" else None)
+
+import logfire
+@logfire.instrument("rerank")
 def rerank(query,items,limit=5):
     if not items:return []
-    if not get_settings().enable_reranker:return [(x,1.0/(i+1)) for i,x in enumerate(items[:limit])]
-    scores=get_reranker().predict([(query,x["text"]) for x in items]); order=sorted(range(len(items)),key=lambda i:float(scores[i]),reverse=True)[:limit]; return [(items[i],float(scores[i])) for i in order]
+    s = get_settings()
+    if not s.enable_reranker:return [(x,1.0/(i+1)) for i,x in enumerate(items[:limit])]
+    
+    url = f"https://ai.api.nvidia.com/v1/retrieval/{s.reranker_model}/reranking"
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {s.nvidia_api_key}"
+    }
+    data = {
+        "model": s.reranker_model,
+        "query": {"text": query},
+        "passages": [{"text": x.get("text", "")} for x in items],
+        "truncate": "END"
+    }
+    
+    resp = requests.post(url, headers=headers, json=data)
+    resp.raise_for_status()
+    rankings = resp.json().get("rankings", [])
+    
+    # rank.index is the original passage index
+    ordered_items = []
+    for rank in rankings[:limit]:
+        idx = rank["index"]
+        score = rank.get("logit", 0.0) # Might be logit or score depending on API
+        ordered_items.append((items[idx], float(score)))
+        
+    return ordered_items

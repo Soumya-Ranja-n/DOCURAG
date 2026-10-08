@@ -19,31 +19,30 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"])
     max_upload_mb: int = Field(default=50, ge=1, le=1024)
     allowed_upload_extensions: list[str] = Field(default_factory=lambda: ["pdf", "png", "jpg", "jpeg"])
-    data_dir: str = "/app/data"
-    raw_data_dir: str = "/app/data/raw"
-    image_data_dir: str = "/app/data/images"
-    index_data_dir: str = "/app/data/index"
-    database_url: str = "sqlite:////app/data/index/docurag.db"
-    qdrant_url: str = "http://qdrant:6333"
+    data_dir: str = "./data"
+    raw_data_dir: str = "./data/raw"
+    image_data_dir: str = "./data/images"
+    index_data_dir: str = "./data/index"
+    database_url: str = "sqlite:///./data/index/docurag.db"
+    qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
     qdrant_text_collection: str = "docurag_text"
     qdrant_image_collection: str = "docurag_images"
-    text_embedding_model: str = "BAAI/bge-small-en-v1.5"
-    image_embedding_model: str = "openai/clip-vit-base-patch32"
-    reranker_model: str = "BAAI/bge-reranker-base"
-    model_cache_dir: str = "/models"
+    text_embedding_model: str = "nemotron-3-embed-1b"
+    image_embedding_model: str = "nvidia/nv-clip-v1"
+    reranker_model: str = "nvidia/llama-nemotron-rerank-1b-v2"
+    model_cache_dir: str = "./models"
     device: Literal["cpu", "cuda", "auto"] = "cpu"
     ocr_engine: Literal["paddleocr", "pytesseract"] = "paddleocr"
     enable_reranker: bool = True
-    enable_query_rewrite: bool = True
+    enable_query_rewrite: bool = False
     retrieval_top_k: int = Field(default=20, ge=1, le=100)
     rerank_top_k: int = Field(default=5, ge=1, le=50)
     rrf_k: int = Field(default=60, ge=1)
-    llm_provider: Literal["anthropic", "ollama"] = "ollama"
-    anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-4-5"
-    ollama_url: str = "http://host.docker.internal:11434"
-    ollama_model: str = "llama3.2-vision"
+    llm_provider: Literal["nvidia", "ollama"] = "nvidia"
+    nvidia_api_key: str | None = None
+    nvidia_model: str = "nvidia/llama-3.1-nemotron-70b-instruct"
+    nvidia_vision_model: str = "meta/llama-3.2-90b-vision-instruct"
     llm_timeout_seconds: int = Field(default=60, ge=1)
     llm_max_retries: int = Field(default=3, ge=0, le=10)
     query_rate_limit_per_minute: int = Field(default=30, ge=1)
